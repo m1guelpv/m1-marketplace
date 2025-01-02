@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marketplace</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://kit.fontawesome.com/adbf0231dc.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div class="marketplace" v-show="isMarketOpen">
+        <aside class="sidebar">
+          <p class="sidebar-title">Market<span>Place</span></p>
+          <nav class="sidebar-content">
+            <ul>
+              <li :class="{ 'active': activeSection === 'browseMarket' }" @click="changeSection('browseMarket')"><i class="fa-solid fa-earth-americas"></i> Browse Market</li>
+              <li :class="{ 'active': activeSection === 'yourOffers' }" @click="changeSection('yourOffers')"><i class="fa-solid fa-bars-progress"></i> Your Offers</li>
+              <li :class="{ 'active': activeSection === 'transactionHistory' }" @click="changeSection('transactionHistory')"><i class="fa-solid fa-clock-rotate-left"></i> Transaction History</li>
+            </ul>
+            <button class="sidebar-leave" @click="closeMarket()"><i class="fa-solid fa-right-from-bracket"></i> Exit</button>
+          </nav>
+        </aside>
+        <main class="main">
+          <header class="main-header">
+            <div class="main-search">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" placeholder="Search for any item" v-model="searchQuery[activeSection]" />
+            </div>
+            <div class="main-user-info">
+              <div class="user-detail">
+                <p class="user-label">Bank<span class="user-value">{{ formatCurrency(playerData.bank) }}</span></p>
+                <i class="fa-solid fa-building-columns"></i>
+              </div>
+              <div class="user-detail">
+                <p class="user-label">Name<span class="user-value">{{ playerData.name }}</span></p>
+                <i class="fa-solid fa-user"></i>
+              </div>
+            </div>
+          </header>
+          <section class="main-content" v-for="(value, key) in sections" :key="key" v-show="activeSection === key">
+            <div class="offer-section">
+              <header class="offer-header">
+                <ul>
+                  <li v-for="attribute in sortableAttributes" :key="attribute.name" :class="{ active: activeSort === attribute.name }" @click="toggleSort(attribute.name)">
+                    <i class="fa-solid" :class="getSortIcon(attribute.name)"></i> {{ attribute.label }}
+                  </li>
+                  <li v-if="key === 'yourOffers'" @click="openModal('createOffer')"><i class="fa-solid fa-square-plus"></i> Create New Offer</li>
+                </ul>
+                <p><i class="fa-solid fa-layer-group"></i> {{ value.length }}</p>
+              </header>
+              <div class="offer-list">
+                <div class="offer-box" :class="{ claimed: offerClaimed(offer) }" v-for="offer in filteredOffers()" :key="offer.id" @click="openModal(activeSection, offer)">
+                  <header class="offer-box-header">
+                    <img :src="getItemImage(offer.name)" alt="Item" />
+                    <p>{{ offer.label }}<span>ID: {{ offer.id }}</span></p>
+                  </header>
+                  <div class="offer-box-info">
+                    <p>Quantity: <span>{{ offer.quantity }}x ({{ offer.weight / 1000 }}kg)</span></p>
+                    <p>Unit Price: <span>{{ formatCurrency(offer.unitPrice) }}</span></p>
+                    <p>Total Price: <span id="total-price">{{ formatCurrency(offer.unitPrice * offer.quantity) }}</span></p>
+                    <p v-if="offer.sellerName && offer.sellerId != playerData.id || activeSection === 'browseMarket'">Seller: <span>{{ offer.sellerName }}</span></p>
+                    <p v-if="offer.buyerName && offer.buyerId != playerData.id">Buyer: <span>{{ offer.buyerName }}</span></p>
+                    <div>
+                      <p v-if="activeSection === 'transactionHistory'">Finished: <span>{{ formatSqlDate(offer.finishedAt) }}</span></p>
+                      <p v-else>Created: <span>{{ formatSqlDate(offer.createdAt) }}</span></p>
+                    </div>
+                  </div>
+                  <div class="offer-box-action" :class="offer.state?.toLowerCase() || ''">
+                    <p class="buy" v-if="key === 'browseMarket'"><i class="fa-solid fa-cart-shopping"></i></p>
+                    <p class="remove" v-if="key === 'yourOffers'"><i class="fa-solid fa-trash"></i></p>
+                    <div v-if="key === 'transactionHistory'">
+                      <p class="claimed" v-if="offerClaimed(offer)"><i class="fa-solid fa-box"></i></p>
+                      <p class="unclaimed" v-else><i class="fa-solid fa-box"></i></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+        <div class="modal" v-show="activeModal">
+          <div class="modal-box">
+            <div v-if="activeModal === 'browseMarket'">
+              <p class="modal-header">Confirm Purchase</p>
+              <p class="modal-description">By confirming this action, the item will be added to your inventory and the payment will be non-refundable.</p>
+              <div class="modal-content">
+                <h1>{{ selectedOffer.label }}</h1>
+                <img :src="getItemImage(selectedOffer.name)" alt="Item Image" />
+                <p>Quantity: <span>{{ selectedOffer.quantity }}x ({{ selectedOffer.weight / 1000 }}kg)</span></p>
+                <p>Unit Price: <span>{{ formatCurrency(selectedOffer.unitPrice) }}</span></p>
+                <p>Total Price: <span id="total-price">{{ formatCurrency(selectedOffer.unitPrice * selectedOffer.quantity) }}</span></p>
+                <p>Seller: <span>{{ selectedOffer.sellerName }}</span></p>
+              </div>
+            </div>
+            <div v-if="activeModal === 'yourOffers'">
+              <p class="modal-header">Confirm Removal</p>
+              <p class="modal-description">By confirming this action, the item will be safely returned to your inventory without any loss.</p>
+              <div class="modal-content">
+                <h1>{{ selectedOffer.label }}</h1>
+                <img :src="getItemImage(selectedOffer.name)" alt="Item Image" />
+                <p>Quantity: <span>{{ selectedOffer.quantity }}x ({{ selectedOffer.weight / 1000 }}kg)</span></p>
+                <p>Unit Price: <span>{{ formatCurrency(selectedOffer.unitPrice) }}</span></p>
+                <p>Total Price: <span id="total-price">{{ formatCurrency(selectedOffer.unitPrice * selectedOffer.quantity) }}</span></p>
+              </div>
+            </div>
+            <div v-if="activeModal === 'transactionHistory'">
+              <p class="modal-header">Confirm Claim</p>
+              <p class="modal-description">By confirming this action, the item or money will be safely returned to your inventory or bank account.</p>
+              <div class="modal-content">
+                <h1>{{ selectedOffer.label }}</h1>
+                <img :src="getItemImage(selectedOffer.name)" alt="Item Image" />
+                <p>Quantity: <span>{{ selectedOffer.quantity }}x ({{ selectedOffer.weight/ 1000 }}kg)</span></p>
+                <p>Unit Price: <span>{{ formatCurrency(selectedOffer.unitPrice) }}</span></p>
+                <p>Total Price: <span id="total-price">{{ formatCurrency(selectedOffer.unitPrice * selectedOffer.quantity) }}</span></p>
+                <p v-if="selectedOffer.sellerName && selectedOffer.sellerId != playerData.id">Seller: <span>{{ selectedOffer.sellerName }}</span></p>
+                <p v-if="selectedOffer.buyerName && selectedOffer.buyerId != playerData.id">Buyer: <span>{{ selectedOffer.buyerName }}</span></p>
+              </div>
+            </div>
+            <div v-if="activeModal === 'createOffer'">
+              <p class="modal-header">Create Offer</p>
+              <p class="modal-description">
+                Select the item, set the price, and specify the quantity you want to sell. Once confirmed, the selected quantity of the item will be removed from your inventory and listed for sale.
+              </p>
+              <div class="modal-content">
+                <div class="modal-input">
+                  <label>Item</label>
+                  <select v-model="newOffer.name" @change="updateNewOfferImage">
+                    <option disabled value="">Select an item...</option>
+                    <option v-for="item in playerData.inventory" :key="item.slot" :value="item.name">({{ item.amount }}x) {{ item.label }}</option>
+                  </select>
+                </div>
+                <div v-if="newOffer.name">
+                  <img :src="getItemImage(newOffer.name)" alt="Item" />
+                  <div class="modal-item-info">
+                    <div class="modal-input">
+                      <label for="itemQuantity">Quantity</label>
+                      <input type="number" id="itemQuantity" v-model="newOffer.quantity" placeholder="1" />
+                    </div>
+                    <div class="modal-input">
+                      <label for="itemPrice">Unit Price</label>
+                      <input type="number" id="itemPrice" v-model="newOffer.unitPrice" placeholder="1" />
+                    </div>
+                  </div>
+                  <div class="modal-final-price">Final Price <span>{{ formatCurrency(newOffer.quantity * newOffer.unitPrice) }}</span></div>
+                  <div class="modal-tax">Creation Tax ({{ settings.createTax * 100 }}%): <span>{{ formatCurrency(newOffer.quantity * newOffer.unitPrice * settings.createTax) }}</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-choice">
+              <button class="accept" @click="acceptModal"><i class="fa-solid fa-thumbs-up"></i> Accept</button>
+              <button class="decline" @click="declineModal"><i class="fa-solid fa-thumbs-down"></i> Decline</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>
