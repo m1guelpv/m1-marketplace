@@ -6,6 +6,7 @@ description 'player-to-player marketplace system'
 version '1.0.0'
 
 shared_scripts {
+    'locales.lua',
     'config.lua'
 }
 

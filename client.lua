@@ -2,6 +2,7 @@ local QBCore = exports['qb-core']:GetCoreObject()
 
 local pedsSpawned = false
 local pedsCreated = {}
+local isMarketOpen = false
 
 -- Functions
 
@@ -11,14 +12,38 @@ local function openMarket()
             SetNuiFocus(true, true)
             SendNUIMessage({
                 action = 'openMarket',
-                settings = Config.Offer,
                 marketData = marketData,
                 playerData = playerData,
+                settings = {
+                    currency = Config.Currency,
+                    createTax = Config.CreateTax,
+                    maxQuantity = Config.MaxQuantity,
+                    maxPrice = Config.MaxPrice,
+                },
             })
+            isMarketOpen = true
         else
             QBCore.Functions.Notify('Unable to fetch market data from the server. Please contact staff if the issue persists.', 'error')
         end
     end)
+end
+
+local function updateMarketData(data)
+    if isMarketOpen then
+        SendNUIMessage({
+            action = 'updateMarketData',
+            marketData = data
+        })
+    end
+end
+
+local function updatePlayerData(data)
+    if isMarketOpen then
+        SendNUIMessage({
+            action = 'updatePlayerData',
+            playerData = data
+        })
+    end
 end
 
 local function createBlips()
@@ -90,6 +115,7 @@ end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
     deletePeds()
+    isMarketOpen = false
 end)
 
 AddEventHandler('onResourceStart', function(resourceName)
@@ -107,10 +133,19 @@ AddEventHandler('onResourceStop', function(resourceName)
     deletePeds()
 end)
 
+RegisterNetEvent('m1-marketplace:client:updateMarketData', function(data)
+    updateMarketData(data)
+end)
+
+RegisterNetEvent('m1-marketplace:client:updatePlayerData', function(data)
+    updatePlayerData(data)
+end)
+
 -- NUI Callback
 
 RegisterNUICallback('closeMarket', function(_, cb)
     SetNuiFocus(false, false)
+    isMarketOpen = false
     cb('ok')
 end)
 

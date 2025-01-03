@@ -54,6 +54,17 @@ const MarketPlaceApp = Vue.createApp({
         this.playerData = playerData;
         this.settings = settings;
         this.isMarketOpen = true;
+        return;
+      }
+      if (action === "updateMarketData") {
+        this.sections.browseMarket = marketData;
+        return;
+      }
+      if (action === "updatePlayerData") {
+        this.playerData = playerData;
+        this.sections.yourOffers = playerData.offers;
+        this.sections.transactionHistory = playerData.history;
+        return;
       }
     },
     handleKeydown(event) {
@@ -134,7 +145,7 @@ const MarketPlaceApp = Vue.createApp({
         })
         .then((response) => {
           if (response.data.status === "success") {
-            this.closeMarket();
+            this.newOffer = { name: "", quantity: 0, unitPrice: 0 };
           }
         });
     },
@@ -145,7 +156,7 @@ const MarketPlaceApp = Vue.createApp({
         })
         .then((response) => {
           if (response.data.status === "success") {
-            this.closeMarket();
+            this.selectedOffer = {};
           }
         });
     },
@@ -156,7 +167,7 @@ const MarketPlaceApp = Vue.createApp({
         })
         .then((response) => {
           if (response.data.status === "success") {
-            this.closeMarket();
+            this.selectedOffer = {};
           }
         });
     },
@@ -167,7 +178,7 @@ const MarketPlaceApp = Vue.createApp({
         })
         .then((response) => {
           if (response.data.status === "success") {
-            this.closeMarket();
+            this.selectedOffer = {};
           }
         });
     },
