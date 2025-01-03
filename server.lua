@@ -11,7 +11,7 @@ local function getPlayerAndCitizenId(playerId)
 end
 
 local function isBlacklistedItem(item)
-    for _, blacklistedItem in ipairs(Config.Offer.blacklistedItems) do
+    for _, blacklistedItem in ipairs(Config.BlacklistedItems) do
         if blacklistedItem == item then
             return true
         end
@@ -46,6 +46,37 @@ local function getCompactedPlayerInventory(player)
     return inventory
 end
 
+local function getMarketData()
+    return MySQL.query.await('SELECT * FROM marketplace_offers')
+end
+
+local function getPlayerData(player, citizenid)
+    local inventory = getCompactedPlayerInventory(player)
+    local offers = MySQL.query.await('SELECT * FROM marketplace_offers WHERE sellerId = ?', { citizenid })
+    local history = MySQL.query.await('SELECT * FROM marketplace_logs WHERE sellerid = ? OR buyerid = ?', { citizenid, citizenid })
+    local money = player.PlayerData.money[Config.Currency] or 0
+    local playerData = {
+        id = citizenid,
+        name = player.PlayerData.charinfo.firstname .. ' ' .. player.PlayerData.charinfo.lastname,
+        money = money,
+        inventory = inventory,
+        offers = offers,
+        history = history
+    }
+    return playerData
+end
+
+local function reloadPlayerData(player)
+    local playerSource = player.PlayerData.source
+    local updatedPlayerData = QBCore.Functions.GetPlayer(playerSource).PlayerData
+    player.PlayerData.items = updatedPlayerData.items
+    player.PlayerData.money[Config.Currency] = updatedPlayerData.money[Config.Currency]
+end
+
+local function round(value)
+    return math.floor(value + 0.5)
+end
+
 -- Callbacks
 
 QBCore.Functions.CreateCallback('m1-marketplace:server:openMarket', function(source, cb)
@@ -55,61 +86,52 @@ QBCore.Functions.CreateCallback('m1-marketplace:server:openMarket', function(sou
         cb(nil, nil)
         return
     end
-    local marketData = MySQL.query.await('SELECT * FROM marketplace_offers')
-    local playerData = {
-        id = citizenid,
-        name = Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname,
-        bank = Player.PlayerData.money.bank,
-        inventory = getCompactedPlayerInventory(Player),
-        offers = MySQL.query.await('SELECT * FROM marketplace_offers WHERE sellerId = ?', { citizenid }),
-        history = MySQL.query.await('SELECT * FROM marketplace_logs WHERE sellerid = ? OR buyerid = ?', { citizenid, citizenid })
-    }
-    cb(marketData, playerData)
+    cb(getMarketData(), getPlayerData(Player, citizenid))
 end)
 
 QBCore.Functions.CreateCallback('m1-marketplace:server:createOffer', function(source, cb, data)
     local src = source
     local Player, citizenid = getPlayerAndCitizenId(src)
     if not Player or not citizenid then
-        return cb({ status = 'error', message = Config.Messages.Errors.PlayerNotFound })
+        return cb({ status = 'error', message = Locales[Config.Lang].PlayerNotFound })
     end
     if not data or not data.item or not data.quantity or not data.unitPrice then
-        return cb({ status = 'error', message = Config.Messages.Errors.InvalidData })
+        return cb({ status = 'error', message = Locales[Config.Lang].InvalidData })
     end
     local itemName = data.item
     local quantity = tonumber(data.quantity)
     local unitPrice = tonumber(data.unitPrice)
     local weight = QBCore.Shared.Items[itemName].weight * quantity
     if isBlacklistedItem(itemName) then
-        return cb({ status = 'error', message = Config.Messages.Errors.itemNotAllowed })
+        return cb({ status = 'error', message = Locales[Config.Lang].itemNotAllowed })
     end
-    if quantity > Config.Offer.maxQuantity or quantity < 1 then
-        return cb({ status = 'error', message = Config.Messages.Errors.MaxQuantityExceeded })
+    if quantity > Config.MaxQuantity or quantity < 1 then
+        return cb({ status = 'error', message = Locales[Config.Lang].MaxQuantityExceeded })
     end
-    if unitPrice > Config.Offer.maxPrice or unitPrice < 1 then
-        return cb({ status = 'error', message = Config.Messages.Errors.MaxPriceExceeded })
+    if unitPrice > Config.MaxPrice or unitPrice < 1 then
+        return cb({ status = 'error', message = Locales[Config.Lang].MaxPriceExceeded })
     end
-    if weight > Config.Offer.maxWeight then
-        return cb({ status = 'error', message = Config.Messages.Errors.maxWeightExceeded })
+    if weight > Config.MaxWeight then
+        return cb({ status = 'error', message = Locales[Config.Lang].maxWeightExceeded })
     end
     local currentOffers = MySQL.query.await('SELECT COUNT(*) AS total FROM marketplace_offers WHERE sellerId = ?', { citizenid })[1].total
-    if currentOffers >= Config.Offer.maxOffers then
-        return cb({ status = 'error', message = Config.Messages.Errors.MaxOffersReached })
+    if currentOffers >= Config.MaxOffers then
+        return cb({ status = 'error', message = Locales[Config.Lang].MaxOffersReached })
     end
     local item = Player.Functions.GetItemByName(itemName)
     if not item or item.amount < quantity then
-        return cb({ status = 'error', message = Config.Messages.Errors.NotEnoughItems })
+        return cb({ status = 'error', message = Locales[Config.Lang].NotEnoughItems })
     end
-    local tax = quantity * unitPrice * Config.Offer.createTax
+    local tax = round(quantity * unitPrice * Config.CreateTax) 
     if Player.PlayerData.money.bank < tax then
-        return cb({ status = 'error', message = Config.Messages.Errors.InsufficientTaxMoney })
+        return cb({ status = 'error', message = Locales[Config.Lang].InsufficientTaxMoney })
     end
-    if not Player.Functions.RemoveMoney('bank', tax) then
-        return cb({ status = 'error', message = Config.Messages.Errors.RemoveMoneyFailed })
+    if not Player.Functions.RemoveMoney(Config.Currency, tax) then
+        return cb({ status = 'error', message = Locales[Config.Lang].RemoveMoneyFailed })
     end
     if not Player.Functions.RemoveItem(itemName, quantity) then
-        Player.Functions.AddMoney('bank', tax)
-        return cb({ status = 'error', message = Config.Messages.Errors.RemoveItemFailed })
+        Player.Functions.AddMoney(Config.Currency, tax)
+        return cb({ status = 'error', message = Locales[Config.Lang].RemoveItemFailed })
     end
     local result = MySQL.insert.await('INSERT INTO marketplace_offers (name, label, quantity, weight, unitPrice, sellerId, sellerName) VALUES (?, ?, ?, ?, ?, ?, ?)', {
         itemName,
@@ -122,35 +144,38 @@ QBCore.Functions.CreateCallback('m1-marketplace:server:createOffer', function(so
     })
     if not result then
         Player.Functions.AddItem(itemName, quantity)
-        Player.Functions.AddMoney('bank', tax)
-        return cb({ status = 'error', message = Config.Messages.Errors.OfferCreationFailed })
+        Player.Functions.AddMoney(Config.Currency, tax)
+        return cb({ status = 'error', message = Locales[Config.Lang].OfferCreationFailed })
     end
-    cb({ status = 'success', message = Config.Messages.Success.OfferCreated })
+    reloadPlayerData(Player)
+    TriggerClientEvent('m1-marketplace:client:updateMarketData', -1, getMarketData())
+    TriggerClientEvent('m1-marketplace:client:updatePlayerData', source, getPlayerData(Player, citizenid))
+    cb({ status = 'success', message = Locales[Config.Lang].OfferCreated })
 end)
 
 QBCore.Functions.CreateCallback('m1-marketplace:server:buyOffer', function(source, cb, data)
     local src = source
     local Player, citizenid = getPlayerAndCitizenId(src)
     if not Player or not citizenid then
-        return cb({ status = 'error', message = Config.Messages.Errors.PlayerNotFound })
+        return cb({ status = 'error', message = Locales[Config.Lang].PlayerNotFound })
     end
     if not data or not data.id then
-        return cb({ status = 'error', message = Config.Messages.Errors.InvalidData })
+        return cb({ status = 'error', message = Locales[Config.Lang].InvalidData })
     end
     local offerId = tonumber(data.id)
     local offer = MySQL.query.await('SELECT * FROM marketplace_offers WHERE id = ?', { offerId })[1]
     if not offer then
-        return cb({ status = 'error', message = Config.Messages.Errors.OfferNotFound })
+        return cb({ status = 'error', message = Locales[Config.Lang].OfferNotFound })
     end
     if offer.sellerId == citizenid then
-        return cb({ status = 'error', message = Config.Messages.Errors.BuyOwnOffer })
+        return cb({ status = 'error', message = Locales[Config.Lang].BuyOwnOffer })
     end
-    local totalPrice = offer.quantity * offer.unitPrice
+    local totalPrice = round(offer.quantity * offer.unitPrice)
     if Player.PlayerData.money.bank < totalPrice then
-        return cb({ status = 'error', message = Config.Messages.Errors.NotEnoughMoney })
+        return cb({ status = 'error', message = Locales[Config.Lang].NotEnoughMoney })
     end
-    if not Player.Functions.RemoveMoney('bank', totalPrice) then
-        return cb({ status = 'error', message = Config.Messages.Errors.RemoveMoneyFailed })
+    if not Player.Functions.RemoveMoney(Config.Currency, totalPrice) then
+        return cb({ status = 'error', message = Locales[Config.Lang].RemoveMoneyFailed })
     end
     local playerName = Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname
     local transactionSuccess = MySQL.transaction.await({
@@ -165,82 +190,91 @@ QBCore.Functions.CreateCallback('m1-marketplace:server:buyOffer', function(sourc
     })
 
     if not transactionSuccess then
-        Player.Functions.AddMoney('bank', totalPrice)
-        return cb({ status = 'error', message = Config.Messages.Errors.TransactionFailed })
+        Player.Functions.AddMoney(Config.Currency, totalPrice)
+        return cb({ status = 'error', message = Locales[Config.Lang].TransactionFailed })
     end
-    sendTargetNotification(offer.sellerId, Config.Messages.Success.OfferPurschased, 'success')
-    cb({ status = 'success', message = Config.Messages.Success.PurchaseSuccess })
+    reloadPlayerData(Player)
+    TriggerClientEvent('m1-marketplace:client:updateMarketData', -1, getMarketData())
+    TriggerClientEvent('m1-marketplace:client:updatePlayerData', source, getPlayerData(Player, citizenid))
+    sendTargetNotification(offer.sellerId, Locales[Config.Lang].OfferPurschased, 'success')
+    cb({ status = 'success', message = Locales[Config.Lang].PurchaseSuccess })
 end)
 
 QBCore.Functions.CreateCallback('m1-marketplace:server:removeOffer', function(source, cb, data)
     local src = source
     local Player, citizenid = getPlayerAndCitizenId(src)
     if not Player or not citizenid then
-        return cb({ status = 'error', message = Config.Messages.Errors.PlayerNotFound })
+        return cb({ status = 'error', message = Locales[Config.Lang].PlayerNotFound })
     end
     if not data or not data.id then
-        return cb({ status = 'error', message = Config.Messages.Errors.InvalidData })
+        return cb({ status = 'error', message = Locales[Config.Lang].InvalidData })
     end
     local offerId = tonumber(data.id)
     local offer = MySQL.query.await('SELECT * FROM marketplace_offers WHERE id = ?', { offerId })[1]
     if not offer then
-        return cb({ status = 'error', message = Config.Messages.Errors.OfferNotFound })
+        return cb({ status = 'error', message = Locales[Config.Lang].OfferNotFound })
     end
     if offer.sellerId ~= citizenid then
-        return cb({ status = 'error', message = Config.Messages.Errors.RemoveOthersOffer })
+        return cb({ status = 'error', message = Locales[Config.Lang].RemoveOthersOffer })
     end
     if not Player.Functions.AddItem(offer.name, offer.quantity) then
-        return cb({ status = 'error', message = Config.Messages.Errors.ItemReturnFailed })
+        return cb({ status = 'error', message = Locales[Config.Lang].ItemReturnFailed })
     end
     local result = MySQL.rawExecute.await('DELETE FROM marketplace_offers WHERE id = ?', { offerId })
     if not result then
         Player.Functions.RemoveItem(offer.name, offer.quantity)
-        return cb({ status = 'error', message = Config.Messages.Errors.RemoveOfferFailed })
+        return cb({ status = 'error', message = Locales[Config.Lang].RemoveOfferFailed })
     end
-    cb({ status = 'success', message = Config.Messages.Success.OfferRemoved })
+    reloadPlayerData(Player)
+    TriggerClientEvent('m1-marketplace:client:updateMarketData', -1, getMarketData())
+    TriggerClientEvent('m1-marketplace:client:updatePlayerData', source, getPlayerData(Player, citizenid))
+    cb({ status = 'success', message = Locales[Config.Lang].OfferRemoved })
 end)
 
 QBCore.Functions.CreateCallback('m1-marketplace:server:claimOffer', function(source, cb, data)
     local src = source
     local Player, citizenid = getPlayerAndCitizenId(src)
     if not Player or not citizenid then
-        return cb({ status = 'error', message = Config.Messages.Errors.PlayerNotFound })
+        return cb({ status = 'error', message = Locales[Config.Lang].PlayerNotFound })
     end
     if not data or not data.id then
-        return cb({ status = 'error', message = Config.Messages.Errors.InvalidData })
+        return cb({ status = 'error', message = Locales[Config.Lang].InvalidData })
     end
     local offerId = tonumber(data.id)
     local offer = MySQL.query.await('SELECT * FROM marketplace_logs WHERE id = ?', { offerId })[1]
     if not offer then
-        return cb({ status = 'error', message = Config.Messages.Errors.OfferNotFound })
+        return cb({ status = 'error', message = Locales[Config.Lang].OfferNotFound })
     end
     if offer.sellerId ~= citizenid and offer.buyerId ~= citizenid then
-        return cb({ status = 'error', message = Config.Messages.Errors.ClaimNotAuthorized })
+        return cb({ status = 'error', message = Locales[Config.Lang].ClaimNotAuthorized })
     end
     if offer.sellerId == citizenid then
+        local totalPrice = round(offer.quantity * offer.unitPrice)
         if offer.sellerClaimed then
-            return cb({ status = 'error', message = Config.Messages.Errors.OfferAlreadyClaimed })
+            return cb({ status = 'error', message = Locales[Config.Lang].OfferAlreadyClaimed })
         end
-        if not Player.Functions.AddMoney('bank', offer.unitPrice * offer.quantity) then
-            return cb({ status = 'error', message = Config.Messages.Errors.MoneyClaimFailed })
+        if not Player.Functions.AddMoney(Config.Currency, totalPrice) then
+            return cb({ status = 'error', message = Locales[Config.Lang].MoneyClaimFailed })
         end
         local update = MySQL.update.await('UPDATE marketplace_logs SET sellerClaimed = 1 WHERE id = ?', { offerId })
         if not update then
-            Player.Functions.RemoveMoney('bank', offer.unitPrice * offer.quantity)
-            return cb({ status = 'error', message = Config.Messages.Errors.ClaimUpdateFailed })
+            Player.Functions.RemoveMoney(Config.Currency, totalPrice)
+            return cb({ status = 'error', message = Locales[Config.Lang].ClaimUpdateFailed })
         end
     elseif offer.buyerId == citizenid then
         if offer.buyerClaimed then
-            return cb({ status = 'error', message = Config.Messages.Errors.OfferAlreadyClaimed })
+            return cb({ status = 'error', message = Locales[Config.Lang].OfferAlreadyClaimed })
         end
         if not Player.Functions.AddItem(offer.name, offer.quantity) then
-            return cb({ status = 'error', message = Config.Messages.Errors.ItemClaimFailed })
+            return cb({ status = 'error', message = Locales[Config.Lang].ItemClaimFailed })
         end
         local update = MySQL.update.await('UPDATE marketplace_logs SET buyerClaimed = 1 WHERE id = ?', { offerId })
         if not update then
             Player.Functions.RemoveItem(offer.name, offer.quantity)
-            return cb({ status = 'error', message = Config.Messages.Errors.ClaimUpdateFailed })
+            return cb({ status = 'error', message = Locales[Config.Lang].ClaimUpdateFailed })
         end
     end
-    cb({ status = 'success', message = Config.Messages.Success.OfferClaimed })
+    reloadPlayerData(Player)
+    TriggerClientEvent('m1-marketplace:client:updatePlayerData', source, getPlayerData(Player, citizenid))
+    cb({ status = 'success', message = Locales[Config.Lang].OfferClaimed })
 end)

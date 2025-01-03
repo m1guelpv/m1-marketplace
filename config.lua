@@ -1,53 +1,19 @@
 Config = {}
 
-Config.Offer = {
-    createTax = 0.15, -- 15%
-    maxQuantity = 500,
-    maxPrice = 100000,
-    maxOffers = 8,
-    maxWeight = 75000, -- 75kg
-    blacklistedItems = {
-        'money',
-        'id_card',
-        'phone',
-        'driver_license',
-    }
-}
+Config.Lang = 'en'
+Config.Currency = 'cash'
 
-Config.Messages = {
-    Errors = {
-        PlayerNotFound = 'Player not found or citizen ID missing.',
-        InvalidData = 'Invalid data. Please ensure all fields are filled.',
-        NotEnoughItems = 'You do not have enough of that item in your inventory.',
-        OfferCreationFailed = 'Failed to create the offer. Your items have been returned.',
-        OfferNotFound = 'Offer not found.',
-        BuyOwnOffer = 'You cannot buy your own offer.',
-        NotEnoughMoney = 'You do not have enough money in your bank account.',
-        RemoveOthersOffer = 'You can only remove your own offers.',
-        TransactionFailed = 'Something went wrong and the transaction failed. Please try again later.',
-        RemoveOfferFailed = 'Failed to remove the offer. Please try again later.',
-        MaxQuantityExceeded = 'The quantity exceeds the maximum allowed.',
-        MaxPriceExceeded = 'The price exceeds the maximum allowed.',
-        MaxOffersReached = 'You already have the maximum number of allowed active offers.',
-        maxWeightExceeded = 'The total weight of the items exceeds the maximum allowed.',
-        InsufficientTaxMoney = 'You do not have enough money to pay the creation tax.',
-        itemNotAllowed = 'The selected item is not allowed in the marketplace.',
-        ClaimNotAuthorized = 'You are not authorized to claim this offer.',
-        OfferAlreadyClaimed = 'This offer has already been claimed.',
-        ClaimUpdateFailed = 'Failed to update the claim status. Please try again later.',
-        RemoveMoneyFailed = 'Failed to remove money from your account.',
-        RemoveItemFailed = 'Failed to remove the item from your inventory.',
-        ItemReturnFailed = 'Failed to return the item to your inventory.',
-        MoneyClaimFailed = 'Failed to claim the money.',
-        ItemClaimFailed = 'Failed to claim the item.'
-    },
-    Success = {
-        PurchaseSuccess = 'You have successfully purchased the offer.',
-        OfferCreated = 'Your offer has been successfully created and listed in the marketplace.',
-        OfferRemoved = 'The offer has been successfully removed from the marketplace.',
-        OfferPurschased = 'Your offer has been purchased.',
-        OfferClaimed = 'The offer has been successfully claimed.'
-    }
+Config.CreateTax = 0.15 -- 15%
+Config.MaxQuantity = 500
+Config.MaxPrice = 100000
+Config.MaxWeight = 75000 -- 75kg
+Config.MaxOffers = 8
+
+Config.BlacklistedItems = {
+    'money',
+    'id_card',
+    'phone',
+    'driver_license',
 }
 
 Config.Locations = {
