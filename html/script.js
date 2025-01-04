@@ -9,6 +9,7 @@ const DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
   day: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
+  hourCycle: "h23",
 });
 
 const DEFAULT_SORT_ATTRIBUTE = "date";
@@ -80,7 +81,16 @@ const MarketPlaceApp = Vue.createApp({
     },
     filteredOffers() {
       const query = this.searchQuery[this.activeSection].toLowerCase();
-      return this.sections[this.activeSection]?.filter((item) => item.name.toLowerCase().includes(query)).sort(this.compareAttributes) || [];
+      return (
+        this.sections[this.activeSection]
+          ?.filter((item) => {
+            if (this.activeSection === "browseMarket" && item.sellerId === this.playerData.id) {
+              return false;
+            }
+            return item.label.toLowerCase().includes(query);
+          })
+          .sort(this.compareAttributes) || []
+      );
     },
     compareAttributes(a, b) {
       const attribute = this.activeSort;
@@ -109,10 +119,10 @@ const MarketPlaceApp = Vue.createApp({
     },
     offerClaimed(offer) {
       if (offer.sellerId === this.playerData.id && offer.sellerClaimed) {
-        return true;
+        return "seller";
       }
       if (offer.buyerId === this.playerData.id && offer.buyerClaimed) {
-        return true;
+        return "buyer";
       }
       return false;
     },
