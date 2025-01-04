@@ -196,6 +196,10 @@ QBCore.Functions.CreateCallback('m1-marketplace:server:buyOffer', function(sourc
     reloadPlayerData(Player)
     TriggerClientEvent('m1-marketplace:client:updateMarketData', -1, getMarketData())
     TriggerClientEvent('m1-marketplace:client:updatePlayerData', source, getPlayerData(Player, citizenid))
+    local Seller = QBCore.Functions.GetPlayerByCitizenId(offer.sellerId)
+    if Seller then
+        TriggerClientEvent('m1-marketplace:client:updatePlayerData', Seller.PlayerData.source, getPlayerData(Seller, offer.sellerId))
+    end
     sendTargetNotification(offer.sellerId, Locales[Config.Lang].OfferPurschased, 'success')
     cb({ status = 'success', message = Locales[Config.Lang].PurchaseSuccess })
 end)

@@ -230,30 +230,16 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 10px;
+  font-size: 14px;
 }
 
 .user-detail p {
   display: flex;
-  flex-direction: column;
-  line-height: 18px;
-  font-size: 14px;
-  align-items: end;
-  color: var(--dark-grey);
-}
-
-.user-detail p span {
-  color: var(--light-grey);
-  font-weight: bold;
+  align-items: center;
 }
 
 .user-detail i {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px;
-  background-color: var(--darker-opacity);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+  color: var(--primary-color);
 }
 
 .main-content {
@@ -309,12 +295,22 @@ button:disabled {
   color: var(--primary-color);
 }
 
+.offer-count {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.offer-count button {
+  background-color: var(--primary-color);
+}
+
 .offer-list {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 10px;
-  max-height: 560px;
+  max-height: 550px;
   overflow-y: auto;
 }
 
@@ -324,7 +320,7 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  width: 255px;
+  width: 200px;
   background-color: var(--darker-opacity);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 12px;
@@ -342,20 +338,57 @@ button:disabled {
   background-color: rgba(255, 255, 255, 0.02);
 }
 
-.offer-box-header {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  gap: 10px;
+.offer-box img {
+  width: 70px;
+  height: auto;
 }
 
-.offer-box-header img {
-  width: 45px;
-  height: 45px;
-  padding: 5px;
-  border-radius: 50px;
-  border: 2px solid var(--primary-color);
-  background-color: rgba(255, 255, 255, 0.05);
+.offer-box .state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--dark-grey);
+  font-size: 14px;
+}
+
+.offer-box .state i {
+  font-size: 13px;
+}
+
+.offer-box .state .sold {
+  font-weight: bold;
+  color: var(--negative);
+}
+
+.offer-box .state .bought {
+  font-weight: bold;
+  color: var(--positive);
+}
+
+.offer-box .date {
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.offer-box .price {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: bold;
+  font-size: 14px;
+  color: var(--positive);
+}
+
+.offer-box .price span {
+  font-weight: normal;
+  font-size: 12px;
+  color: var(--dark-grey);
+}
+
+.offer-box-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .offer-box-header p {
@@ -363,57 +396,33 @@ button:disabled {
   flex-direction: column;
   font-weight: bold;
   font-size: 15px;
+  line-height: 18px;
   color: var(--primary-color);
 }
 
 .offer-box-header p span {
-  font-size: 11px;
-  font-weight: lighter;
+  font-size: 12px;
+  font-weight: normal;
   color: var(--dark-grey);
 }
 
-.offer-box-info {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  padding: 10px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  gap: 5px;
-}
-
-.offer-box-info p {
-  color: var(--dark-grey);
-  font-size: 13px;
-}
-
-.offer-box-info p span {
+.offer-box-header .quantity {
   color: var(--light-grey);
-  font-weight: bold;
+  text-align: right;
+  font-size: 13px;
 }
 
 .offer-box-action {
   display: flex;
   align-items: center;
+  justify-content: center;
   text-transform: capitalize;
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
   font-weight: bold;
-  margin-top: 5px;
+  font-size: 12px;
+  padding-top: 10px;
   gap: 10px;
-}
-
-.offer-box-action .buy i {
-  color: var(--light-grey);
-}
-
-.offer-box-action .remove i {
-  color: var(--light-grey);
-}
-
-.offer-box-action .unclaimed i {
-  color: var(--light-grey);
-}
-
-.offer-box-action .claimed {
   color: var(--dark-grey);
 }
 
@@ -460,31 +469,43 @@ button:disabled {
 .modal-content {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
   border: 1px solid rgba(255, 255, 255, 0.05);
   background-color: var(--darker-opacity);
   border-radius: 10px;
-  padding: 10px;
-}
-
-.modal-content h1 {
-  font-size: 15px;
-  color: var(--primary-color);
+  padding: 20px;
 }
 
 .modal-content img {
   width: 50px;
-  height: 50px;
-  border-radius: 50px;
+  height: auto;
   margin: 10px auto;
 }
 
-.modal-content p {
+.modal-content.item {
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.modal-content.item img {
+  width: 70px;
+  height: auto;
+}
+
+.modal-info {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+}
+
+.modal-info p {
   font-size: 14px;
   color: var(--dark-grey);
 }
 
-.modal-content p span {
+.modal-info p span {
+  font-size: 13px;
   font-weight: bold;
   color: var(--light-grey);
 }
@@ -582,6 +603,20 @@ button:disabled {
   color: var(--negative);
 }
 
-#total-price {
+.modal-reward {
+  font-weight: bold;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+#positive {
   color: var(--positive);
+}
+
+#negative {
+  color: var(--positive);
+}
+
+#primary {
+  color: var(--primary-color);
 }

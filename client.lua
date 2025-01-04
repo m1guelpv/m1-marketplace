@@ -19,6 +19,7 @@ local function openMarket()
                     createTax = Config.CreateTax,
                     maxQuantity = Config.MaxQuantity,
                     maxPrice = Config.MaxPrice,
+                    maxOffers = Config.MaxOffers,
                 },
             })
             isMarketOpen = true
