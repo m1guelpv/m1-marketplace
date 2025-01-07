@@ -55,14 +55,15 @@
                 </div>
               </header>
               <div class="offer-list" :class="[key]">
-                <div class="offer-box" :class="{ claimed: offerClaimed(offer) }" v-for="offer in filteredOffers()" :key="offer.id" @click="openModal(activeSection, offer)">
+                <div class="offer-box" v-for="offer in filteredOffers()" :key="offer.id" @click="openModal(activeSection, offer)">
                   <header class="offer-box-header">
                     <p class="label">{{ offer.label }}<span>ID: {{ offer.id }}</span></p>
                     <p class="quantity">{{ offer.quantity }}x<span>{{ offer.weight / 1000 }}kg</span></p>
                   </header>
                   <img :src="getItemImage(offer.name)" alt="Item" />
-                  <p class="price">{{ formatCurrency(offer.unitPrice * offer.quantity) }}<span>{{ formatCurrency(offer.unitPrice) }}/u</span></p>
-                  <p class="date" v-if="activeSection === 'transactionHistory'">{{ formatSqlDate(offer.finishedAt) }}</p>
+                  <div v-if="activeSection != 'transactionHistory'">
+                    <p class="price">{{ formatCurrency(offer.unitPrice * offer.quantity) }}<span>{{ formatCurrency(offer.unitPrice) }}/u</span></p>
+                  </div>
                   <div v-if="activeSection === 'transactionHistory'">
                     <div class="state" v-if="offer.buyerName && offer.buyerId != playerData.id">
                       <p class="sold"><i class="fa-solid fa-circle-minus"></i> Sold</p>
@@ -120,15 +121,32 @@
               </div>
             </div>
             <div v-if="activeModal === 'transactionHistory'">
-              <p class="modal-header">Confirm Claim</p>
-              <p class="modal-description">By confirming this action, the item or money will be safely returned to your inventory or bank account.</p>
-              <div class="modal-content">
-                <p>Your offer rewards:</p>
-                <div class="modal-reward" v-if="selectedOffer.buyerName && selectedOffer.buyerId != playerData.id">
-                  <p id="positive">{{ formatCurrency(selectedOffer.unitPrice * selectedOffer.quantity) }}</p>
+              <div v-if="offerClaimed(selectedOffer)">
+                <p class="modal-header">Offer Information</p>
+                <p class="modal-description">This is the detailed information about this offer. Here you check for anything you need to remember.</p>
+                <div class="modal-content item">
+                  <div class="modal-info">
+                    <p>Name: <span id="primary">{{ selectedOffer.label }}</span></p>
+                    <p>Quantity: <span>{{ selectedOffer.quantity }}x</span></p>
+                    <p>Weight: <span>{{ selectedOffer.weight / 1000 }}kg</span></p>
+                    <p>Unit Price: <span>{{ formatCurrency(selectedOffer.unitPrice) }}</span></p>
+                    <p>Total Price: <span id="positive">{{ formatCurrency(selectedOffer.unitPrice * selectedOffer.quantity) }}</span></p>
+                    <p>Finished: <span>{{ formatSqlDate(selectedOffer.finishedAt) }}</span></p>
+                  </div>
+                  <img :src="getItemImage(selectedOffer.name)" alt="Item Image" />
                 </div>
-                <div class="modal-reward" v-if="selectedOffer.sellerName && selectedOffer.sellerId != playerData.id">
-                  <p>{{ selectedOffer.quantity }}x <span id="primary">{{ selectedOffer.label }}</span></p>
+              </div>
+              <div v-else>
+                <p class="modal-header">Confirm Claim</p>
+                <p class="modal-description">By confirming this action, the item or money will be safely returned to your inventory or bank account.</p>
+                <div class="modal-content">
+                  <p>Your offer rewards:</p>
+                  <div class="modal-reward" v-if="selectedOffer.buyerName && selectedOffer.buyerId != playerData.id">
+                    <p id="positive">{{ formatCurrency(selectedOffer.unitPrice * selectedOffer.quantity) }}</p>
+                  </div>
+                  <div class="modal-reward" v-if="selectedOffer.sellerName && selectedOffer.sellerId != playerData.id">
+                    <p>{{ selectedOffer.quantity }}x <span id="primary">{{ selectedOffer.label }}</span></p>
+                  </div>
                 </div>
               </div>
             </div>

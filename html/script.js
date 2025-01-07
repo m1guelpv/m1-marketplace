@@ -127,9 +127,6 @@ const MarketPlaceApp = Vue.createApp({
       return false;
     },
     openModal(modal, offer = {}) {
-      if (modal === "transactionHistory" && this.offerClaimed(offer)) {
-        return;
-      }
       this.selectedOffer = offer;
       this.activeModal = modal;
     },

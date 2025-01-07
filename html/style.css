@@ -347,27 +347,24 @@ button:disabled {
   display: flex;
   flex-direction: column;
   align-items: center;
+  font-size: 12px;
   color: var(--dark-grey);
-  font-size: 14px;
 }
 
 .offer-box .state i {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .offer-box .state .sold {
+  font-size: 14px;
   font-weight: bold;
   color: var(--negative);
 }
 
 .offer-box .state .bought {
+  font-size: 14px;
   font-weight: bold;
   color: var(--positive);
-}
-
-.offer-box .date {
-  font-weight: bold;
-  font-size: 13px;
 }
 
 .offer-box .price {
